@@ -1,0 +1,114 @@
+about:
+  date: February 28, 2022 19:09:38
+  recent_changes: works with modified safrs-react-admin
+  version: 4.02.08
+api_root: http://localhost:5656/api
+info:
+  number_relationships: 4
+  number_tables: 4
+resources:
+  Customer:
+    attributes:
+    - label: ' Company Name*'
+      name: CompanyName
+      search: true
+      sort: true
+    - name: Balance
+      type: DECIMAL
+    - name: CreditLimit
+      type: DECIMAL
+    - name: Id
+      required: true
+    tab_groups:
+    - direction: tomany
+      fks:
+      - CustomerId
+      name: OrderList
+      resource: Order
+    - direction: tomany
+      fks:
+      - CustomerId
+      name: PaymentList
+      resource: Payment
+    type: Customer
+    user_key: CompanyName
+  Order:
+    attributes:
+    - label: ' Id*'
+      name: Id
+      required: true
+      search: true
+      sort: true
+    - name: CustomerId
+    - name: OrderDate
+    - name: AmountTotal
+    - name: AmountOwed
+      required: true
+    - name: AmountPaid
+      required: true
+    tab_groups:
+    - direction: tomany
+      fks:
+      - OrderId
+      name: PaymentAllocationList
+      resource: PaymentAllocation
+    - direction: toone
+      fks:
+      - CustomerId
+      name: Customer
+      resource: Customer
+    type: Order
+    user_key: Id
+  Payment:
+    attributes:
+    - label: ' Id*'
+      name: Id
+      required: true
+      search: true
+      sort: true
+    - name: CustomerId
+    - name: Amount
+      type: DECIMAL
+    - name: AmountUnAllocated
+      type: DECIMAL
+    - name: CreatedOn
+    tab_groups:
+    - direction: tomany
+      fks:
+      - PaymentId
+      name: PaymentAllocationList
+      resource: PaymentAllocation
+    - direction: toone
+      fks:
+      - CustomerId
+      name: Customer
+      resource: Customer
+    type: Payment
+    user_key: Id
+  PaymentAllocation:
+    attributes:
+    - label: ' Id*'
+      name: Id
+      required: true
+      search: true
+      sort: true
+    - name: OrderId
+    - name: PaymentId
+    - name: AmountAllocated
+      type: DECIMAL
+    tab_groups:
+    - direction: toone
+      fks:
+      - OrderId
+      name: Order
+      resource: Order
+    - direction: toone
+      fks:
+      - PaymentId
+      name: Payment
+      resource: Payment
+    type: PaymentAllocation
+    user_key: Id
+settings:
+  HomeJS: http://localhost:5656/admin-app/home.js
+  max_list_columns: 8
