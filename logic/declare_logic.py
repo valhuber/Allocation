@@ -6,17 +6,16 @@ from logic_bank.logic_bank import Rule
 from database import models
 import logging
 
+from logic_bank.extensions.allocate import Allocate
 
-def allocate_payment(row: models.Payment, old_row: models.Payment, logic_row: LogicRow):
-    """ get unpaid orders (recipient), invoke allocation """
-    customer_of_payment = row.Customer
-    unpaid_orders = logic_row.session.query(Order)\
-        .filter(Order.AmountOwed > 0, Order.CustomerId == customer_of_payment.Id)\
-        .order_by(Order.OrderDate).all()
-    row.AmountUnAllocated = row.Amount
-    Allocate(from_provider_row=logic_row,  # uses default while_calling_allocator
-             to_recipients=unpaid_orders,
-             creating_allocation=PaymentAllocation).execute()
+
+def unpaid_orders(provider: LogicRow):
+    """ returns Payments' Customers' Orders, where AmountOwed > 0, by OrderDate """
+    customer_of_payment = provider.row.Customer
+    unpaid_orders_result = provider.session.query(models.Order)\
+        .filter(models.Order.AmountOwed > 0, models.Order.CustomerId == customer_of_payment.Id)\
+        .order_by(models.Order.OrderDate).all()
+    return unpaid_orders_result
 
 
 def declare_logic():
@@ -29,4 +28,21 @@ def declare_logic():
     Rule.formula(derive=models.PaymentAllocation.AmountAllocated, as_expression=lambda row:
         min(Decimal(row.Payment.AmountUnAllocated), Decimal(row.Order.AmountOwed)))
 
-    Rule.early_row_event(on_class=models.Payment, calling=allocate_payment)
+    # ?? Rule.early_row_event(on_class=models.Payment, calling=allocate_payment)
+
+    Allocate(provider=models.Payment,  # uses default while_calling_allocator
+            recipients=unpaid_orders,
+            creating_allocation=models.PaymentAllocation)
+
+
+
+def allocate_payment(row: models.Payment, old_row: models.Payment, logic_row: LogicRow):
+    """ get unpaid orders (recipient), invoke allocation """
+    customer_of_payment = row.Customer
+    unpaid_orders = logic_row.session.query(models.Order)\
+        .filter(models.Order.AmountOwed > 0, models.Order.CustomerId == customer_of_payment.Id)\
+        .order_by(models.Order.OrderDate).all()
+    row.AmountUnAllocated = row.Amount
+    Allocate(provider=logic_row,  # uses default while_calling_allocator
+             recipients=unpaid_orders,
+             creating_allocation=models.PaymentAllocation)

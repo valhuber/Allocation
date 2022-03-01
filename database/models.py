@@ -69,7 +69,7 @@ class Payment(SAFRSBase, Base):
 
     # see backref on parent: Customer = relationship('Customer', cascade_backrefs=True, backref='PaymentList')
 
-    PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='Payment')
+    PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='database.models.Payment')
 
 
 class PaymentAllocation(SAFRSBase, Base):
