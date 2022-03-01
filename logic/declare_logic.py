@@ -7,7 +7,7 @@ from database import models
 import logging
 
 
-def allocate_payment(row: Payment, old_row: Payment, logic_row: LogicRow):
+def allocate_payment(row: models.Payment, old_row: models.Payment, logic_row: LogicRow):
     """ get unpaid orders (recipient), invoke allocation """
     customer_of_payment = row.Customer
     unpaid_orders = logic_row.session.query(Order)\
@@ -21,12 +21,12 @@ def allocate_payment(row: Payment, old_row: Payment, logic_row: LogicRow):
 
 def declare_logic():
 
-    Rule.sum(derive=Customer.Balance, as_sum_of=Order.AmountOwed)
+    Rule.sum(derive=models.Customer.Balance, as_sum_of=models.Order.AmountOwed)
 
-    Rule.formula(derive=Order.AmountOwed, as_expression=lambda row: row.AmountTotal - row.AmountPaid)
-    Rule.sum(derive=Order.AmountPaid, as_sum_of=PaymentAllocation.AmountAllocated)
+    Rule.formula(derive=models.Order.AmountOwed, as_expression=lambda row: row.AmountTotal - row.AmountPaid)
+    Rule.sum(derive=models.Order.AmountPaid, as_sum_of=models.PaymentAllocation.AmountAllocated)
 
-    Rule.formula(derive=PaymentAllocation.AmountAllocated, as_expression=lambda row:
+    Rule.formula(derive=models.PaymentAllocation.AmountAllocated, as_expression=lambda row:
         min(Decimal(row.Payment.AmountUnAllocated), Decimal(row.Order.AmountOwed)))
 
-    Rule.early_row_event(on_class=Payment, calling=allocate_payment)
+    Rule.early_row_event(on_class=models.Payment, calling=allocate_payment)
