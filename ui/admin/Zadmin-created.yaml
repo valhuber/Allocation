@@ -1,5 +1,5 @@
 about:
-  date: March 01, 2022 13:39:48
+  date: February 28, 2022 19:09:38
   recent_changes: works with modified safrs-react-admin
   version: 4.02.08
 api_root: http://localhost:5656/api
@@ -55,7 +55,7 @@ resources:
     - direction: toone
       fks:
       - CustomerId
-      name: database.models.Customer
+      name: Customer
       resource: Customer
     type: Order
     user_key: Id
@@ -81,7 +81,7 @@ resources:
     - direction: toone
       fks:
       - CustomerId
-      name: database.models.Customer
+      name: Customer
       resource: Customer
     type: Payment
     user_key: Id
@@ -100,12 +100,12 @@ resources:
     - direction: toone
       fks:
       - OrderId
-      name: database.models.Order
+      name: Order
       resource: Order
     - direction: toone
       fks:
       - PaymentId
-      name: database.models.Payment
+      name: Payment
       resource: Payment
     type: PaymentAllocation
     user_key: Id

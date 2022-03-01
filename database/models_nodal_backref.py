@@ -32,8 +32,8 @@ class Customer(SAFRSBase, Base):
     CreditLimit = Column(DECIMAL)
     allow_client_generated_ids = True
 
-    OrderList = relationship('Order', cascade_backrefs=True, backref='Customer')
-    PaymentList = relationship('Payment', cascade_backrefs=True, backref='Customer')
+    OrderList = relationship('Order', cascade_backrefs=True, backref='database.models.Customer')
+    PaymentList = relationship('Payment', cascade_backrefs=True, backref='database.models.Customer')
 
 
 t_sqlite_sequence = Table(
@@ -55,7 +55,7 @@ class Order(SAFRSBase, Base):
 
     # see backref on parent: Customer = relationship('Customer', cascade_backrefs=True, backref='OrderList')
 
-    PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='Order')
+    PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='database.models.Order')
 
 
 class Payment(SAFRSBase, Base):
@@ -69,7 +69,7 @@ class Payment(SAFRSBase, Base):
 
     # see backref on parent: Customer = relationship('Customer', cascade_backrefs=True, backref='PaymentList')
 
-    PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='Payment')
+    PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='database.models.Payment')
 
 
 class PaymentAllocation(SAFRSBase, Base):
