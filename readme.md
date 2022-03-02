@@ -19,7 +19,10 @@ Allocation is a pattern (more examples below), where:
 
 
 For example, imagine a ```Customer``` has a set of outstanding
-```Orders```, and pays all/several off with a periodic ```Payment```.
+```Orders```, and pays all/several off with a single ```Payment```.
+
+
+&nbsp;&nbsp;
 
 ## Data Model
 
@@ -33,7 +36,6 @@ a ```PaymentAllocation```
 1. As the ```Payment``` is allocated,
    1. Update the ```Order.AmountOwed```, and
    1. Adjust the ```Customer.Balance```
-
 
 
 &nbsp;&nbsp;
@@ -60,6 +62,86 @@ curl -X POST "http://localhost:5656/api/Payment/" -H  "accept: application/vnd.a
 ```
 
 &nbsp;&nbsp;
+
+
+# Failing
+
+Hitting [this bug](https://github.com/valhuber/LogicBank/issues/6).
+
+Throws: `Data error Missing relationship from Parent Provider: <Payment> to child Allocation: <class 'database.models.PaymentAllocation'> of class: PaymentAllocation`.
+
+Root cause is in `LogicRow`:
+
+```python
+    def link(self, to_parent: 'LogicRow'):
+        """
+        set self.to_parent (parent_accessor) = to_parent
+
+        Example
+            if logic_row.are_attributes_changed([Employee.Salary, Employee.Title]):
+                copy_to_logic_row = logic_row.new_logic_row(EmployeeAudit)
+                copy_to_logic_row.link(to_parent=logic_row)  # link to parent Employee
+                copy_to_logic_row.set_same_named_attributes(logic_row)
+                copy_to_logic_row.insert(reason="Manual Copy " + copy_to_logic_row.name)  # triggers rules...
+
+        Args:
+            to_parent: mapped class that is parent to this logic_row
+
+        """
+        parent_mapper = object_mapper(to_parent.row)
+        parents_relationships = parent_mapper.relationships
+        parent_role_name = None
+        child = self.row
+        for each_relationship in parents_relationships:  # eg, Payment has child PaymentAllocation
+            if each_relationship.direction == sqlalchemy.orm.interfaces.ONETOMANY:  # PA
+                each_parent_role_name = each_relationship.back_populates  # eg, PaymentAllocationList
+                child_row_class_name = str(child.__class__.__name__)  # eg, PaymentAllocation
+                child_reln_class_name = str(each_relationship.entity.class_.__name__)  # eg., PaymentAllocation
+                # if child_row_class_name == child_reln_class_name:  FIX..
+                if isinstance(child, each_relationship.entity.class_):
+                    if parent_role_name is not None:
+                        raise Exception("TODO - disambiguate relationship from Provider: <" +
+                                        to_parent.name +
+                                        "> to Allocation: " + str(type(child)))
+                    parent_role_name = parent_mapper.class_.__name__ 
+        if parent_role_name is None:
+            raise Exception("Missing relationship from Parent Provider: <"  +
+                            to_parent.name +
+                            "> to child Allocation: " + str(type(child)) + " of class: " + child.__class__.__name__)
+```
+
+
+`isInstance` fails due to packed name in SQLAlchemy meta data expecting a nodal name.   Replacing `isInstance` proceeds, but per below...
+
+## Using `from database import models` (ApiLogicServer default logic)
+
+Fails on flush with:
+```
+Data error Generic Error: Attempting to flush an item of type <class 'models.Payment'> as a member of collection "PaymentAllocation.Payment". Expected an object of type <class 'database.models.Payment'> or a polymorphic subclass of this type.
+```
+   > Can update, row class = models.Payment
+
+
+## Using `import database` (same)
+
+Using import to `import database`, refs to `database.models.Payment`.
+
+Stil fails with:
+
+```
+sqlalchemy.orm.exc.FlushError: Attempting to flush an item of type <class 'models.Payment'> as a member of collection "PaymentAllocation.Payment". Expected an object of type <class 'database.models.Payment'> or a polymorphic subclass of this type.
+
+```
+
+## Allocation works with this model, but admin app and API fail
+
+Tried this:
+``` 
+PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='database.models.Payment')
+```
+For example, `aPaymentAllocation.Payment` is not defined - the debugger shows a property `database.models.Payment` which is not accessible.
+
+
 
 # Walkthrough
 
@@ -176,78 +258,3 @@ Note how the created ```PaymentAllocation``` row triggered
 the more standard rules such as sums and formulas.  This
 required no special machinery: rules watch and react to changes in data -
 if you change the data, rules will "notice" that, and fire.  Automatically.
-
-# Failing
-
-Hitting [this bug](https://github.com/valhuber/LogicBank/issues/6).
-
-Throws: `Data error Missing relationship from Parent Provider: <Payment> to child Allocation: <class 'database.models.PaymentAllocation'> of class: PaymentAllocation`.
-
-Root cause is in `LogicRow`:
-
-```python
-    def link(self, to_parent: 'LogicRow'):
-        """
-        set self.to_parent (parent_accessor) = to_parent
-
-        Example
-            if logic_row.are_attributes_changed([Employee.Salary, Employee.Title]):
-                copy_to_logic_row = logic_row.new_logic_row(EmployeeAudit)
-                copy_to_logic_row.link(to_parent=logic_row)  # link to parent Employee
-                copy_to_logic_row.set_same_named_attributes(logic_row)
-                copy_to_logic_row.insert(reason="Manual Copy " + copy_to_logic_row.name)  # triggers rules...
-
-        Args:
-            to_parent: mapped class that is parent to this logic_row
-
-        """
-        parent_mapper = object_mapper(to_parent.row)
-        parents_relationships = parent_mapper.relationships
-        parent_role_name = None
-        child = self.row
-        for each_relationship in parents_relationships:  # eg, Payment has child PaymentAllocation
-            if each_relationship.direction == sqlalchemy.orm.interfaces.ONETOMANY:  # PA
-                each_parent_role_name = each_relationship.back_populates  # eg, PaymentAllocationList
-                child_row_class_name = str(child.__class__.__name__)  # eg, PaymentAllocation
-                child_reln_class_name = str(each_relationship.entity.class_.__name__)  # eg., PaymentAllocation
-                if isinstance(child, each_relationship.entity.class_):
-                    if parent_role_name is not None:
-                        raise Exception("TODO - disambiguate relationship from Provider: <" +
-                                        to_parent.name +
-                                        "> to Allocation: " + str(type(child)))
-                    parent_role_name = parent_mapper.class_.__name__  # default TODO design review
-        if parent_role_name is None:
-            raise Exception("Missing relationship from Parent Provider: <"  +
-                            to_parent.name +
-                            "> to child Allocation: " + str(type(child)) + " of class: " + child.__class__.__name__)
-```
-
-
-`isInstance` fails due to packed name in SQLAlchemy meta data.   Replacing `isInstance` proceeds, but per below...
-
-## Using `from database import models` (ApiLogicServer default logic)
-
-Fails on flush with:
-```
-Data error Generic Error: Attempting to flush an item of type <class 'models.Payment'> as a member of collection "PaymentAllocation.Payment". Expected an object of type <class 'database.models.Payment'> or a polymorphic subclass of this type.
-```
-   > Can update, row class = models.Payment
-
-
-## Using `import database` (same)
-
-Using import to `import database`, refs to `database.models.Payment`.
-
-Stil fails with:
-
-```
-Data error Generic Error: Attempting to flush an item of type <class 'models.Payment'> as a member of collection "PaymentAllocation.Payment". Expected an object of type <class 'database.models.Payment'> or a polymorphic subclass of this type.
-```
-
-## Allocation works with this model, but admin app and API fail
-
-Tried this:
-``` 
-PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='database.models.Payment')
-```
-Need to verify admin, model apis

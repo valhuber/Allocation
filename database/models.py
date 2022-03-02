@@ -3,6 +3,7 @@ from sqlalchemy import Boolean, Column, DECIMAL, DateTime, ForeignKey, Integer, 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref
 
 
 ########################################################################################################################
@@ -70,6 +71,7 @@ class Payment(SAFRSBase, Base):
     # see backref on parent: Customer = relationship('Customer', cascade_backrefs=True, backref='PaymentList')
 
     PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref='Payment')
+    # PaymentAllocationList = relationship('PaymentAllocation', cascade_backrefs=True, backref=backref('Payment',))
 
 
 class PaymentAllocation(SAFRSBase, Base):

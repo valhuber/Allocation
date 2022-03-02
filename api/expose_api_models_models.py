@@ -3,14 +3,11 @@ import safrs
 import importlib
 import pathlib
 import logging as logging
-import database
 # use absolute path import for easier multi-{app,model,db} support
-'''
 db_py = pathlib.Path(__file__).parent.parent / "database/models.py"
 db_spec =importlib.util.spec_from_file_location("models", db_py.resolve())
 models = importlib.util.module_from_spec(db_spec)
 db_spec.loader.exec_module(models)
-'''
 
 app_logger = logging.getLogger('api_logic_server_app')
 app_logger.info("api/expose_api_models.py - endpoint for each table")
@@ -23,9 +20,9 @@ def expose_models(app, HOST="localhost", PORT=5656, API_PREFIX="/api", **kwargs)
     safrs_log_level = safrs.log.getEffectiveLevel()
     if True or app_logger.getEffectiveLevel() >= logging.INFO:
         safrs.log.setLevel(logging.WARN)  # warn is 20, info 30
-    api.expose_object(database.models.Customer)
-    api.expose_object(database.models.Order)
-    api.expose_object(database.models.Payment)
-    api.expose_object(database.models.PaymentAllocation)
+    api.expose_object(models.Customer)
+    api.expose_object(models.Order)
+    api.expose_object(models.Payment)
+    api.expose_object(models.PaymentAllocation)
     safrs.log.setLevel(safrs_log_level)
     return api
