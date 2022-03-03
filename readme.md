@@ -12,7 +12,7 @@
 
 This project is to illustrate the use of [Allocation](https://github.com/valhuber/LogicBank/wiki/Sample-Project---Allocation).
 
-Allocation is a pattern (more examples below), where:
+Allocation is a pattern where:
 
 > A ```Provider``` allocates to a list of ```Recipients```,
 >creating ```Allocation``` rows.
@@ -71,78 +71,34 @@ See [these 2 bugs](https://github.com/valhuber/ApiLogicServer/issues/39).
 This project requires LogicBank==1.4.3 (`requirements.txt` updated), and manual fixes to `expose_api_models`.
 
 
-&nbsp;&nbsp
+&nbsp;&nbsp;
 
 # Walkthrough
 
 The test illustrates allocation logic for our inserted payment,
 which operates as follows:
 1. The triggering event is the insertion of a ```Payment```, which triggers:
-1. The ```allocate``` rule (line 28).  It performs the allocation:
-   1. Obtains the list of recipient orders by calling the function```unpaid_orders``` (line 9)
-   1. For each recipient (```Order```),
+1. The ```allocate``` rule.  It performs the allocation:
+   1. Obtains the list of recipient orders by calling the function```unpaid_orders```
+   1. For each recipient (```Order```), the system...
       1. Creates a ```PaymentAllocation```, links it to the ```Order``` and ```Payment```,
-      1. Invokes ```while_calling_allocator```, which
+      1. Invokes the default ```while_calling_allocator```, which
            1. Reduces ```Payment.AmountUnAllocated```
            1. Inserts the ```PaymentAllocation```, which runs the following rules:
-              * r1 ```PaymentAllocation.AmountAllocated``` is derived (formula, line 25); 
+              * r1 ```PaymentAllocation.AmountAllocated``` is derived ; 
                  this triggers the next rule...
-              * r2 ```Order.AmountPaid``` is adjusted (sum rule, line 23); that triggers... 
-              * r3 ```Order.AmountOwed``` is derived (formula rule, line 22); that triggers
-              * r4 ```Customer.Balance``` is adjusted (sum rule, line 20)
-           1. Returns whether the```Payment.AmountUnAllocated``` has remaining value ( > 0 ).
+              * r2 ```Order.AmountPaid``` is adjusted; that triggers... 
+              * r3 ```Order.AmountOwed``` is derived; that triggers
+              * r4 ```Customer.Balance``` is adjusted
+           1. Returns whether the ```Payment.AmountUnAllocated``` has remaining value ( > 0 ).
         1. Tests the returned result
             1. If true (allocation remains), the loop continues for the next recipient
             1. Otherwise, the allocation loop is terminated
-   
-#### Default ```while_calling_allocator```
-This example does not supply an optional argument:
-```while_calling_allocator```.
-The [`logic_bank/extensions/allocate.py`](../blob/main/logic_bank/extensions/allocate.py)
-provides a default, called ```while_calling_allocator_default```.
-
-This default presumes the attribute names shown in the code below.
-If these do not match your attribute names, copy / alter this
-implementation to your own, and specify it on the constructor
-(line 15).
-
-```python
-    def while_calling_allocator_default(self, allocation_logic_row, provider_logic_row) -> bool:
-        """
-        Called for each created allocation, to
-            * insert the created allocation (triggering rules that compute `Allocation.AmountAllocated`)
-            * reduce Provider.AmountUnAllocated
-            * return boolean indicating whether Provider.AmountUnAllocated > 0 (remains)
-
-        This uses default names:
-            * provider.Amount
-            * provider.AmountUnallocated
-            * allocation.AmountAllocated
-
-        To use your names, copy this code and alter as as required
-
-        :param allocation_logic_row: allocation row being created
-        :param provider_logic_row: provider
-        :return: provider has AmountUnAllocated remaining
-        """
-
-        if provider_logic_row.row.AmountUnAllocated is None:
-            provider_logic_row.row.AmountUnAllocated = provider_logic_row.row.Amount  # initialization
-
-        allocation_logic_row.insert(reason="Allocate " + provider_logic_row.name)  # triggers rules, eg AmountAllocated
-
-        provider_logic_row.row.AmountUnAllocated = \
-            provider_logic_row.row.AmountUnAllocated - allocation_logic_row.row.AmountAllocated
-
-        return provider_logic_row.row.AmountUnAllocated > 0  # terminate allocation loop if none left
-```
+ 
 
 #### Log Output
 Logic operation is visible in the log
 
-> Note: the test program
-[`examples/payment_allocation/tests/add_payment.py`](../blob/main/examples/banking/tests/transfer_funds.py)
-shows some test data in comments at the end
 
 ```
 Logic Phase:		BEFORE COMMIT          						 - 2020-12-23 05:56:45,682 - logic_logger - DEBUG
