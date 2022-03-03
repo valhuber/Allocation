@@ -137,7 +137,7 @@ While Allocation is part of Logic Bank, you could have recognized
 the pattern yourself, and provided the implementation.  This is
 enabled since Event rules can invoke Python.  You can make your
 Python code generic, using meta data (from SQLAlchemy),
-parameters, etc.
+parameters, etc.  For more information, see [Extensibility](https://github.com/valhuber/LogicBank/wiki/Rule-Extensibility#3-extended-rules).
 
 ### Rule Chaining
 Note how the created ```PaymentAllocation``` row triggered
